@@ -40,6 +40,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Model Viewer</title>
+</svelte:head>
+
 {#if urlParam}
   <div class="h-screen w-screen">
     <ModelViewer modelUrl={urlParam} />
