@@ -1,4 +1,4 @@
-# image-viewer
+# model-viewer
 
 A simple web app to display a remote 3D model file. Supported formats include GLB, GLTF, OBJ, and STL. Maximum allowed file size is 200 MB.
 
