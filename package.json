@@ -43,6 +43,7 @@
   "dependencies": {
     "@babylonjs/core": "^8.45.5",
     "@babylonjs/loaders": "^8.45.5",
-    "@fontsource/ibm-plex-sans": "^5.2.8"
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "lucide-svelte": "^0.562.0"
   }
 }
