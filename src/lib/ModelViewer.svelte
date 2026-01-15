@@ -386,7 +386,7 @@
 
   <canvas
     bind:this={canvasElement}
-    class="block w-full h-full bg-source-950"
+    class="model-viewer-canvas block w-full h-full bg-source-950"
     class:cursor-grab={!isDragging}
     class:cursor-grabbing={isDragging}
     onpointerdown={() => (isDragging = true)}
