@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { Minus, Plus, Rotate3d } from "lucide-svelte";
+  import { Minus, Plus } from "lucide-svelte";
   import {
     AbstractMesh,
     Animation,
@@ -12,7 +12,6 @@
     Engine,
     HemisphericLight,
     Mesh,
-    Observer,
     QuadraticEase,
     Scene,
     StandardMaterial,
@@ -80,16 +79,10 @@
   let scene: Scene | null = null;
   let camera: ArcRotateCamera | null = null;
   let modelRoot: TransformNode | null = null;
-  let modelFlip: TransformNode | null = null;
   let renderMeshes: AbstractMesh[] = [];
   let handleResize: (() => void) | null = null;
   let zoomAnim: { stop: () => void } | null = null;
-  let flipAnim: { stop: () => void } | null = null;
-  let flipRecenterObserver: Observer<Scene> | null = null;
-
-  let isFlipAnimating = false;
   let isDragging = $state(false);
-  let isFlipped = $state(false);
 
   const getWorldBounds = (meshes: AbstractMesh[]) => {
     if (!meshes.length) return null;
@@ -124,61 +117,6 @@
       modelRoot.position.subtractInPlace(center);
       modelRoot.computeWorldMatrix(true);
     }
-  };
-
-  const flipModel = () => {
-    if (!modelFlip || !scene) return;
-    const currentScene = scene;
-    const targetRotation = isFlipped ? Math.PI : 0;
-
-    if (flipAnim) {
-      flipAnim.stop();
-    }
-    if (flipRecenterObserver) {
-      currentScene.onBeforeRenderObservable.remove(flipRecenterObserver);
-      flipRecenterObserver = null;
-    }
-
-    const flipAnimation = new Animation(
-      "modelFlip",
-      "rotation.x",
-      ANIMATION_FRAME_RATE,
-      Animation.ANIMATIONTYPE_FLOAT,
-      Animation.ANIMATIONLOOPMODE_CONSTANT
-    );
-    flipAnimation.setKeys([
-      { frame: 0, value: modelFlip.rotation.x },
-      { frame: ANIMATION_FRAMES, value: targetRotation }
-    ]);
-
-    const easing = new QuadraticEase();
-    easing.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
-    flipAnimation.setEasingFunction(easing);
-
-    isFlipAnimating = true;
-    flipRecenterObserver = currentScene.onBeforeRenderObservable.add(() => {
-      if (isFlipAnimating) {
-        recenterModel();
-      }
-    });
-
-    flipAnim = currentScene.beginDirectAnimation(
-      modelFlip,
-      [flipAnimation],
-      0,
-      ANIMATION_FRAMES,
-      false,
-      1,
-      () => {
-        isFlipAnimating = false;
-        if (flipRecenterObserver) {
-          currentScene.onBeforeRenderObservable.remove(flipRecenterObserver);
-          flipRecenterObserver = null;
-        }
-        modelFlip?.computeWorldMatrix(true);
-        recenterModel();
-      }
-    );
   };
 
   const zoom = (zoomIn: boolean) => {
@@ -238,6 +176,10 @@
       camera.setTarget(Vector3.Zero());
       camera.lowerRadiusLimit = 0.1;
       camera.upperRadiusLimit = 1000;
+      camera.lowerAlphaLimit = null;
+      camera.upperAlphaLimit = null;
+      camera.lowerBetaLimit = null;
+      camera.upperBetaLimit = null;
       camera.wheelDeltaPercentage = 0.01;
       camera.panningSensibility = 0;
       scene.activeCamera = camera;
@@ -288,9 +230,7 @@
 
       if (renderMeshes.length > 0) {
         modelRoot = new TransformNode("modelRoot", scene);
-        modelFlip = new TransformNode("modelFlip", scene);
-        modelFlip.setParent(modelRoot);
-        renderMeshes.forEach((m) => m.setParent(modelFlip, true, true));
+        renderMeshes.forEach((m) => m.setParent(modelRoot, true, true));
         modelRoot.computeWorldMatrix(true);
         const preBounds = getWorldBounds(renderMeshes);
         if (!preBounds) {
@@ -305,8 +245,8 @@
 
           modelRoot.scaling = new Vector3(scale, scale, scale);
           modelRoot.position = Vector3.Zero();
-          flipModel();
           modelRoot.computeWorldMatrix(true);
+          recenterModel();
 
           const postBounds = getWorldBounds(renderMeshes);
           if (!postBounds) {
@@ -329,7 +269,7 @@
           camera.minZ = 0.01;
           camera.maxZ = camera.upperRadiusLimit * 5;
         } else {
-          flipModel();
+          recenterModel();
           camera.setTarget(Vector3.Zero());
           camera.radius = 10;
         }
@@ -357,10 +297,6 @@
     if (camera) {
       camera.detachControl();
     }
-    if (scene && flipRecenterObserver) {
-      scene.onBeforeRenderObservable.remove(flipRecenterObserver);
-      flipRecenterObserver = null;
-    }
     if (engine) {
       engine.dispose();
     }
@@ -374,14 +310,6 @@
   <div id="toolbar" class="absolute top-0 left-0 z-1 flex flex-col m-2 gap-1">
     <Button icon={Plus} onclick={() => zoom(true)} title="Zoom in" />
     <Button icon={Minus} onclick={() => zoom(false)} title="Zoom out" />
-    <Button
-      icon={Rotate3d}
-      onclick={() => {
-        isFlipped = !isFlipped;
-        flipModel();
-      }}
-      title="Flip model on axis"
-    />
   </div>
 
   <canvas
