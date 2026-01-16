@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { Minus, Plus } from "lucide-svelte";
+  import { Maximize2, Minimize2, Minus, Plus } from "lucide-svelte";
   import {
     AbstractMesh,
     Animation,
@@ -28,6 +28,18 @@
   const ZOOM_STEP = 1.5;
   const ANIMATION_FRAME_RATE = 60;
   const ANIMATION_FRAMES = 20;
+
+  let containerElement: HTMLDivElement;
+  let canvasElement: HTMLCanvasElement;
+  let isFullScreen = $state(false);
+  let engine: Engine | null = null;
+  let scene: Scene | null = null;
+  let camera: ArcRotateCamera | null = null;
+  let modelRoot: TransformNode | null = null;
+  let renderMeshes: AbstractMesh[] = [];
+  let handleResize: (() => void) | null = null;
+  let zoomAnim: { stop: () => void } | null = null;
+  let isDragging = $state(false);
 
   const isObjSource = (url: string) => {
     return new URL(url).pathname.toLowerCase().endsWith(".obj");
@@ -73,16 +85,6 @@
     rebuilt.material = mesh.material;
     return rebuilt;
   };
-
-  let canvasElement: HTMLCanvasElement;
-  let engine: Engine | null = null;
-  let scene: Scene | null = null;
-  let camera: ArcRotateCamera | null = null;
-  let modelRoot: TransformNode | null = null;
-  let renderMeshes: AbstractMesh[] = [];
-  let handleResize: (() => void) | null = null;
-  let zoomAnim: { stop: () => void } | null = null;
-  let isDragging = $state(false);
 
   const getWorldBounds = (meshes: AbstractMesh[]) => {
     if (!meshes.length) return null;
@@ -148,6 +150,17 @@
     zoomAnimation.setEasingFunction(easing);
 
     zoomAnim = scene.beginDirectAnimation(camera, [zoomAnimation], 0, ANIMATION_FRAMES, false);
+  };
+
+  const toggleFullScreen = () => {
+    if (!containerElement) return;
+    if (isFullScreen) {
+      isFullScreen = false;
+      document.exitFullscreen();
+    } else {
+      isFullScreen = true;
+      containerElement.requestFullscreen();
+    }
   };
 
   onMount(async () => {
@@ -306,10 +319,15 @@
   });
 </script>
 
-<div class="relative w-full h-full">
+<div bind:this={containerElement} class="relative w-full h-full">
   <div id="toolbar" class="absolute top-0 left-0 z-1 flex flex-col m-2 gap-1">
     <Button icon={Plus} onclick={() => zoom(true)} title="Zoom in" />
     <Button icon={Minus} onclick={() => zoom(false)} title="Zoom out" />
+    <Button
+      icon={isFullScreen ? Minimize2 : Maximize2}
+      onclick={toggleFullScreen}
+      title="Toggle full screen"
+    />
   </div>
 
   <canvas

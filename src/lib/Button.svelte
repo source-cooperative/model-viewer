@@ -18,7 +18,10 @@
   const buttonClasses = hidden ? "hidden" :
     "bg-source-100 text-source-900 border-source-200 hover:bg-source-200 hover:border-source-300 dark:bg-source-900 dark:text-source-100 dark:border-source-800 dark:hover:bg-source-800 dark:hover:border-source-700 p-2 border";
 
-  const Icon = icon;
+  let Icon = $state<typeof IconType | null>(icon);
+  $effect(() => {
+    Icon = icon;
+  });
 </script>
 
 <button
