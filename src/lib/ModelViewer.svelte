@@ -16,8 +16,7 @@
     Scene,
     StandardMaterial,
     TransformNode,
-    Vector3,
-    VertexData
+    Vector3
   } from "@babylonjs/core";
   import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
   import { registerBuiltInLoaders } from "@babylonjs/loaders/dynamic";
@@ -46,25 +45,15 @@
     return new URL(url).pathname.toLowerCase().endsWith(".obj");
   };
 
-  const rebuildMesh = (mesh: AbstractMesh, scene: Scene) => {
-    const vertexData = VertexData.ExtractFromMesh(mesh as Mesh);
-    if (!vertexData || !vertexData.positions?.length || !vertexData.indices?.length) {
+  const rebuildMesh = (mesh: AbstractMesh) => {
+    if (!(mesh instanceof Mesh)) {
       return null;
     }
-
-    const rebuilt = new Mesh(mesh.name, scene);
-    vertexData.applyToMesh(rebuilt, false);
-    rebuilt.position.copyFrom(mesh.position);
-    rebuilt.scaling.copyFrom(mesh.scaling);
-    if (mesh.rotationQuaternion) {
-      rebuilt.rotationQuaternion = mesh.rotationQuaternion.clone();
-    } else {
-      rebuilt.rotation.copyFrom(mesh.rotation);
+    if (!mesh.geometry) {
+      return null;
     }
-    rebuilt.isVisible = mesh.isVisible;
-    rebuilt.setEnabled(mesh.isEnabled());
-    rebuilt.material = mesh.material;
-    return rebuilt;
+    mesh.makeGeometryUnique();
+    return mesh;
   };
 
   const getHierarchyBounds = (root: TransformNode) => {
@@ -179,10 +168,9 @@
 
       meshes.forEach((mesh: AbstractMesh, index: number) => {
         let targetMesh: AbstractMesh = mesh;
-        if (objSource && scene) {
-          const rebuiltMesh = rebuildMesh(mesh, scene);
+        if (objSource) {
+          const rebuiltMesh = rebuildMesh(mesh);
           if (rebuiltMesh) {
-            mesh.dispose(false, true);
             targetMesh = rebuiltMesh;
           }
         }
