@@ -5,13 +5,13 @@
     AbstractMesh,
     Animation,
     ArcRotateCamera,
+    Camera,
     Color3,
     Color4,
-    DirectionalLight,
     EasingFunction,
     Engine,
-    HemisphericLight,
     Mesh,
+    Observer,
     QuadraticEase,
     Scene,
     StandardMaterial,
@@ -39,6 +39,7 @@
   let renderMeshes: AbstractMesh[] = [];
   let handleResize: (() => void) | null = null;
   let zoomAnim: { stop: () => void } | null = null;
+  let cameraViewObserver: Observer<Camera> | null = null;
   let isDragging = $state(false);
 
   const isObjSource = (url: string) => {
@@ -86,34 +87,14 @@
     return rebuilt;
   };
 
-  const getWorldBounds = (meshes: AbstractMesh[]) => {
-    if (!meshes.length) return null;
-    let min = new Vector3(
-      Number.POSITIVE_INFINITY,
-      Number.POSITIVE_INFINITY,
-      Number.POSITIVE_INFINITY
-    );
-    let max = new Vector3(
-      Number.NEGATIVE_INFINITY,
-      Number.NEGATIVE_INFINITY,
-      Number.NEGATIVE_INFINITY
-    );
-
-    meshes.forEach((mesh) => {
-      mesh.computeWorldMatrix(true);
-      mesh.refreshBoundingInfo({});
-      const bounds = mesh.getBoundingInfo().boundingBox;
-      min = Vector3.Minimize(min, bounds.minimumWorld);
-      max = Vector3.Maximize(max, bounds.maximumWorld);
-    });
-
+  const getHierarchyBounds = (root: TransformNode) => {
+    const { min, max } = root.getHierarchyBoundingVectors(true);
     return { min, max };
   };
 
   const recenterModel = () => {
-    if (!modelRoot || !renderMeshes.length) return;
-    const bounds = getWorldBounds(renderMeshes);
-    if (!bounds) return;
+    if (!modelRoot) return;
+    const bounds = getHierarchyBounds(modelRoot);
     const center = Vector3.Center(bounds.min, bounds.max);
     if (center.lengthSquared() > 1e-6) {
       modelRoot.position.subtractInPlace(center);
@@ -193,14 +174,22 @@
       camera.upperAlphaLimit = null;
       camera.lowerBetaLimit = null;
       camera.upperBetaLimit = null;
-      camera.wheelDeltaPercentage = 0.01;
+      camera.allowUpsideDown = true;
+      camera.wheelDeltaPercentage = 0;
+      camera.wheelPrecision = 500;
       camera.panningSensibility = 0;
       scene.activeCamera = camera;
 
-      const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-      const dirLight = new DirectionalLight("dirLight", new Vector3(-1, -1, -1), scene);
-      light.intensity = 1.0;
-      dirLight.intensity = 0.5;
+      scene.createDefaultLight();
+      const defaultLight = scene.lights[scene.lights.length - 1];
+      if (defaultLight && "direction" in defaultLight) {
+        const lightWithDirection = defaultLight as { direction: Vector3 };
+        const localDir = lightWithDirection.direction.clone();
+        const activeCamera = camera;
+        cameraViewObserver = activeCamera.onViewMatrixChangedObservable.add(() => {
+          lightWithDirection.direction = activeCamera.getDirection(localDir);
+        });
+      }
 
       engine.runRenderLoop(() => {
         if (scene) {
@@ -245,47 +234,29 @@
         modelRoot = new TransformNode("modelRoot", scene);
         renderMeshes.forEach((m) => m.setParent(modelRoot, true, true));
         modelRoot.computeWorldMatrix(true);
-        const preBounds = getWorldBounds(renderMeshes);
-        if (!preBounds) {
-          throw new Error("Failed to compute model bounds");
-        }
-        const size = preBounds.max.subtract(preBounds.min);
+        recenterModel();
+
+        const bounds = getHierarchyBounds(modelRoot);
+        const size = bounds.max.subtract(bounds.min);
         const maxDimension = Math.max(size.x, size.y, size.z);
 
-        if (maxDimension > 0) {
-          const desiredSize = 10;
-          const scale = desiredSize / maxDimension;
+        camera.useFramingBehavior = true;
+        camera.setTarget(Vector3.Zero());
+        camera.zoomOn(renderMeshes);
+        camera.alpha = -Math.PI / 2;
+        camera.beta = Math.PI / 2.5;
 
-          modelRoot.scaling = new Vector3(scale, scale, scale);
-          modelRoot.position = Vector3.Zero();
-          modelRoot.computeWorldMatrix(true);
-          recenterModel();
+        const fallbackRadius = Math.max(maxDimension * 1.5, 3);
+        const radius = Number.isFinite(camera.radius) ? camera.radius : fallbackRadius;
+        const minRadius = Math.max(maxDimension * 0.02, 0.01);
+        const maxRadius = Math.max(maxDimension * 3, minRadius * 3);
+        const clampedRadius = Math.min(Math.max(radius, minRadius), maxRadius);
 
-          const postBounds = getWorldBounds(renderMeshes);
-          if (!postBounds) {
-            throw new Error("Failed to compute model bounds");
-          }
-          const postSize = postBounds.max.subtract(postBounds.min);
-          const postMaxDimension = Math.max(postSize.x, postSize.y, postSize.z);
-
-          camera.useFramingBehavior = false;
-          camera.setTarget(Vector3.Zero());
-
-          const radius = Math.max(postMaxDimension * 1.5, 3);
-          camera.radius = radius;
-          camera.alpha = -Math.PI / 2;
-          camera.beta = Math.PI / 2.5;
-
-          const upperLimit = Math.max(radius * 2.5, radius + 5);
-          camera.lowerRadiusLimit = 0.5;
-          camera.upperRadiusLimit = upperLimit;
-          camera.minZ = 0.01;
-          camera.maxZ = camera.upperRadiusLimit * 5;
-        } else {
-          recenterModel();
-          camera.setTarget(Vector3.Zero());
-          camera.radius = 10;
-        }
+        camera.radius = clampedRadius;
+        camera.lowerRadiusLimit = minRadius;
+        camera.upperRadiusLimit = maxRadius;
+        camera.minZ = 0.01;
+        camera.maxZ = camera.upperRadiusLimit * 5;
       } else {
         console.warn("No renderable meshes found (0 vertices)");
         camera.setTarget(Vector3.Zero());
@@ -308,6 +279,9 @@
       window.removeEventListener("resize", handleResize);
     }
     if (camera) {
+      if (cameraViewObserver) {
+        camera.onViewMatrixChangedObservable.remove(cameraViewObserver);
+      }
       camera.detachControl();
     }
     if (engine) {
@@ -332,7 +306,7 @@
 
   <canvas
     bind:this={canvasElement}
-    class="model-viewer-canvas block w-full h-full bg-source-950"
+    class="model-viewer-canvas block w-full h-full bg-source-950 touch-none"
     class:cursor-grab={!isDragging}
     class:cursor-grabbing={isDragging}
     onpointerdown={() => (isDragging = true)}
