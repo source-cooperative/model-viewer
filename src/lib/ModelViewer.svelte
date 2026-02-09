@@ -226,6 +226,7 @@
     class="model-viewer-canvas block w-full h-full bg-source-950 touch-none"
     class:cursor-grab={!isDragging}
     class:cursor-grabbing={isDragging}
+    ondblclick={(event) => zoom(!event.shiftKey)}
     onpointerdown={() => (isDragging = true)}
     onpointerup={() => (isDragging = false)}
     onpointerleave={() => (isDragging = false)}
