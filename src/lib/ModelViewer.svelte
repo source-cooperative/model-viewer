@@ -47,29 +47,9 @@
   };
 
   const rebuildMesh = (mesh: AbstractMesh, scene: Scene) => {
-    const positions = mesh.getVerticesData("position");
-    const indices = mesh.getIndices();
-    if (!positions || positions.length === 0 || !indices || indices.length === 0) {
+    const vertexData = VertexData.ExtractFromMesh(mesh as Mesh);
+    if (!vertexData || !vertexData.positions?.length || !vertexData.indices?.length) {
       return null;
-    }
-
-    const vertexData = new VertexData();
-    vertexData.positions = positions;
-    vertexData.indices = indices;
-
-    const normals = mesh.getVerticesData("normal");
-    if (normals && normals.length > 0) {
-      vertexData.normals = normals;
-    }
-
-    const uvs = mesh.getVerticesData("uv");
-    if (uvs && uvs.length > 0) {
-      vertexData.uvs = uvs;
-    }
-
-    const colors = mesh.getVerticesData("color");
-    if (colors && colors.length > 0) {
-      vertexData.colors = colors;
     }
 
     const rebuilt = new Mesh(mesh.name, scene);
