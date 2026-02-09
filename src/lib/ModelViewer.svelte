@@ -15,7 +15,6 @@
     QuadraticEase,
     Scene,
     StandardMaterial,
-    TransformNode,
     Vector3
   } from "@babylonjs/core";
   import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
@@ -34,7 +33,6 @@
   let engine: Engine | null = null;
   let scene: Scene | null = null;
   let camera: ArcRotateCamera | null = null;
-  let modelRoot: TransformNode | null = null;
   let renderMeshes: AbstractMesh[] = [];
   let handleResize: (() => void) | null = null;
   let zoomAnim: { stop: () => void } | null = null;
@@ -56,20 +54,6 @@
     return mesh;
   };
 
-  const getHierarchyBounds = (root: TransformNode) => {
-    const { min, max } = root.getHierarchyBoundingVectors(true);
-    return { min, max };
-  };
-
-  const recenterModel = () => {
-    if (!modelRoot) return;
-    const bounds = getHierarchyBounds(modelRoot);
-    const center = Vector3.Center(bounds.min, bounds.max);
-    if (center.lengthSquared() > 1e-6) {
-      modelRoot.position.subtractInPlace(center);
-      modelRoot.computeWorldMatrix(true);
-    }
-  };
 
   const zoom = (zoomIn: boolean) => {
     if (!camera || !scene) return;
@@ -189,16 +173,6 @@
       renderMeshes = objSource ? rebuiltMeshes : meshes;
 
       if (renderMeshes.length > 0) {
-        modelRoot = new TransformNode("modelRoot", scene);
-        renderMeshes.forEach((m) => m.setParent(modelRoot, true, true));
-        modelRoot.computeWorldMatrix(true);
-        recenterModel();
-        modelRoot.computeWorldMatrix(true);
-        renderMeshes.forEach((mesh) => {
-          mesh.computeWorldMatrix(true);
-          mesh.getBoundingInfo().update(mesh.getWorldMatrix());
-        });
-
         camera.useFramingBehavior = true;
         camera.setTarget(Vector3.Zero());
         camera.zoomOn(renderMeshes);
