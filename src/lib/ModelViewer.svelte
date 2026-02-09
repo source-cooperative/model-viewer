@@ -6,7 +6,6 @@
     Animation,
     ArcRotateCamera,
     Camera,
-    Color3,
     Color4,
     EasingFunction,
     Engine,
@@ -14,7 +13,6 @@
     Observer,
     QuadraticEase,
     Scene,
-    StandardMaterial,
     Vector3
   } from "@babylonjs/core";
   import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
@@ -163,11 +161,6 @@
         targetMesh.setEnabled(true);
         targetMesh.isVisible = true;
 
-        if (!targetMesh.material && scene) {
-          const defaultMat = new StandardMaterial(`defaultMat_${index}`, scene);
-          defaultMat.diffuseColor = new Color3(0.8, 0.8, 0.8);
-          targetMesh.material = defaultMat;
-        }
       });
 
       renderMeshes = objSource ? rebuiltMeshes : meshes;
