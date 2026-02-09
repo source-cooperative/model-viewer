@@ -138,29 +138,19 @@
       scene = new Scene(engine);
       scene.clearColor = new Color4(0.067, 0.067, 0.067, 0);
 
-      camera = new ArcRotateCamera(
-        "camera",
-        -Math.PI / 2,
-        Math.PI / 2.5,
-        10,
-        Vector3.Zero(),
-        scene
-      );
+      scene.createDefaultCameraOrLight(true, true, true);
+      camera = scene.activeCamera as ArcRotateCamera | null;
+      if (!camera) {
+        throw new Error("Failed to create default camera");
+      }
       camera.attachControl(canvasElement, true);
       camera.setTarget(Vector3.Zero());
-      camera.lowerRadiusLimit = 0.1;
-      camera.upperRadiusLimit = 1000;
-      camera.lowerAlphaLimit = null;
-      camera.upperAlphaLimit = null;
+      camera.wheelDeltaPercentage = 0.01;
+      camera.wheelPrecision = 100;
       camera.lowerBetaLimit = null;
       camera.upperBetaLimit = null;
-      camera.allowUpsideDown = true;
-      camera.wheelDeltaPercentage = 0;
-      camera.wheelPrecision = 500;
       camera.panningSensibility = 0;
-      scene.activeCamera = camera;
-
-      scene.createDefaultLight();
+      camera.allowUpsideDown = true;
       const defaultLight = scene.lights[scene.lights.length - 1];
       if (defaultLight && "direction" in defaultLight) {
         const lightWithDirection = defaultLight as { direction: Vector3 };
@@ -215,28 +205,20 @@
         renderMeshes.forEach((m) => m.setParent(modelRoot, true, true));
         modelRoot.computeWorldMatrix(true);
         recenterModel();
-
-        const bounds = getHierarchyBounds(modelRoot);
-        const size = bounds.max.subtract(bounds.min);
-        const maxDimension = Math.max(size.x, size.y, size.z);
+        modelRoot.computeWorldMatrix(true);
+        renderMeshes.forEach((mesh) => {
+          mesh.computeWorldMatrix(true);
+          mesh.getBoundingInfo().update(mesh.getWorldMatrix());
+        });
 
         camera.useFramingBehavior = true;
         camera.setTarget(Vector3.Zero());
         camera.zoomOn(renderMeshes);
         camera.alpha = -Math.PI / 2;
         camera.beta = Math.PI / 2.5;
-
-        const fallbackRadius = Math.max(maxDimension * 1.5, 3);
-        const radius = Number.isFinite(camera.radius) ? camera.radius : fallbackRadius;
-        const minRadius = Math.max(maxDimension * 0.02, 0.01);
-        const maxRadius = Math.max(maxDimension * 3, minRadius * 3);
-        const clampedRadius = Math.min(Math.max(radius, minRadius), maxRadius);
-
-        camera.radius = clampedRadius;
-        camera.lowerRadiusLimit = minRadius;
-        camera.upperRadiusLimit = maxRadius;
+        camera.upperRadiusLimit = camera.radius * 3;
         camera.minZ = 0.01;
-        camera.maxZ = camera.upperRadiusLimit * 5;
+        camera.maxZ = camera.radius * 5;
       } else {
         console.warn("No renderable meshes found (0 vertices)");
         camera.setTarget(Vector3.Zero());
