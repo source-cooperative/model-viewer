@@ -38,7 +38,7 @@
   let isDragging = $state(false);
 
   const isObjSource = (url: string) => {
-    return new URL(url).pathname.toLowerCase().endsWith(".obj");
+    return new URL(url).pathname.toLocaleLowerCase().endsWith(".obj");
   };
 
   const rebuildMesh = (mesh: AbstractMesh) => {
@@ -107,7 +107,7 @@
       });
 
       scene = new Scene(engine);
-      scene.clearColor = new Color4(0.067, 0.067, 0.067, 0);
+      scene.clearColor = new Color4(0.067, 0.067, 0.067, 1);
 
       scene.createDefaultCameraOrLight(true, true, true);
       camera = scene.activeCamera as ArcRotateCamera | null;
@@ -148,7 +148,7 @@
       const meshes = assetContainer.meshes.filter((mesh) => mesh.getTotalVertices() > 0);
       const rebuiltMeshes: AbstractMesh[] = [];
 
-      meshes.forEach((mesh: AbstractMesh, index: number) => {
+      meshes.forEach((mesh: AbstractMesh) => {
         let targetMesh: AbstractMesh = mesh;
         if (objSource) {
           const rebuiltMesh = rebuildMesh(mesh);
@@ -166,9 +166,12 @@
       renderMeshes = objSource ? rebuiltMeshes : meshes;
 
       if (renderMeshes.length > 0) {
+        // Temporarily use framing behavior to center camera on model
         camera.useFramingBehavior = true;
         camera.setTarget(Vector3.Zero());
         camera.zoomOn(renderMeshes);
+        camera.useFramingBehavior = false;
+
         camera.alpha = -Math.PI / 2;
         camera.beta = Math.PI / 2.5;
         camera.upperRadiusLimit = camera.radius * 3;
