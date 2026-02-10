@@ -6,13 +6,7 @@ Uses [Babylon.js](https://www.babylonjs.com) to display meshes.
 
 ## How to use
 
-When the app is running, submit a valid remote model URL via query parameter `url`. For example:
-
-```
-/?url=https://data.source.coop/harvard-lil/smithsonian-open-access/3d/009463d3-6f58-4f5b-8e60-915805a876ee/USNM_91201-150k-1024-low.glb
-```
-
-Once the image loads, use the built-in controls to zoom, rotate the image, or enter full screen mode.
+When the app is running, submit a valid remote model URL via query parameter `url`. Once the model loads, use the built-in controls to zoom, rotate the model, or enter full screen mode.
 
 ## Development setup
 
