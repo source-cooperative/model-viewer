@@ -227,7 +227,7 @@
 
   <canvas
     bind:this={canvasElement}
-    class="model-viewer-canvas block w-full h-full bg-source-300 dark:bg-source-950 touch-none"
+    class="model-viewer-canvas block w-full h-full bg-source-400 dark:bg-source-950 touch-none"
     class:cursor-grab={!isDragging}
     class:cursor-grabbing={isDragging}
     ondblclick={(event) => zoom(!event.shiftKey)}
