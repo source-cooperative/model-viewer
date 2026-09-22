@@ -102,12 +102,13 @@
       registerBuiltInLoaders();
 
       engine = new Engine(canvasElement, true, {
+        alpha: true,
         preserveDrawingBuffer: true,
         stencil: true
       });
 
       scene = new Scene(engine);
-      scene.clearColor = new Color4(0.067, 0.067, 0.067, 1);
+      scene.clearColor = new Color4(0, 0, 0, 0);
 
       scene.createDefaultCameraOrLight(true, true, true);
       camera = scene.activeCamera as ArcRotateCamera | null;
@@ -226,7 +227,7 @@
 
   <canvas
     bind:this={canvasElement}
-    class="model-viewer-canvas block w-full h-full bg-source-950 touch-none"
+    class="model-viewer-canvas block w-full h-full bg-source-300 dark:bg-source-950 touch-none"
     class:cursor-grab={!isDragging}
     class:cursor-grabbing={isDragging}
     ondblclick={(event) => zoom(!event.shiftKey)}
